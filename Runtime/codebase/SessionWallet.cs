@@ -100,34 +100,6 @@ namespace Solana.Unity.SDK
             return sessionWallet;
         }
 
-        /// <inheritdoc />
-        protected override Task<Account> _Login(string password = "")
-        {
-            var keystoreService = new KeyStorePbkdf2Service();
-            var encryptedKeystoreJson = LoadPlayerPrefs(EncryptedKeystoreKey);
-            byte[] decryptedKeystore;
-            try
-            {
-                if (string.IsNullOrEmpty(encryptedKeystoreJson))
-                    return Task.FromResult<Account>(null);
-                decryptedKeystore = keystoreService.DecryptKeyStoreFromJson(password, encryptedKeystoreJson);
-            }
-            catch (DecryptionException e)
-            {
-                Debug.LogException(e);
-                return Task.FromResult<Account>(null);
-            }
-
-            var secret = Encoding.UTF8.GetString(decryptedKeystore);
-            var account = FromSecret(secret);
-            if (IsMnemonic(secret))
-            {
-                var restoredMnemonic = new Mnemonic(secret);
-                Mnemonic = restoredMnemonic;
-            }
-            return Task.FromResult(account);
-        }
-
         public async Task PrepareLogout(){
             Debug.Log("Preparing Logout");
             // Revoke Session
@@ -150,40 +122,6 @@ namespace Solana.Unity.SDK
             await SignAndSendTransaction(tx);
             // Purge Keystore
             PlayerPrefs.DeleteKey(EncryptedKeystoreKey);
-        }
-
-        /// <inheritdoc />
-        protected override Task<Account> _CreateAccount(string secret = null, string password = null)
-        {
-            Account account;
-            Mnemonic mnem = null;
-            if (secret != null)
-            {
-                account = FromSecret(secret);
-                if (IsMnemonic(secret))
-                {
-                    mnem = new Mnemonic(secret);
-                }
-            }
-            else
-            {
-                mnem = new Mnemonic(WordList.English, WordCount.Twelve);
-                var wallet = new Wallet.Wallet(mnem);
-                account = wallet.Account;
-                secret = mnem.ToString();
-            }
-            if (account == null) return Task.FromResult<Account>(null);
-
-            password ??= "";
-
-            var keystoreService = new KeyStorePbkdf2Service();
-            var stringByteArray = Encoding.UTF8.GetBytes(secret);
-            var encryptedKeystoreJson = keystoreService.EncryptAndGenerateKeyStoreAsJson(
-                password, stringByteArray, account.PublicKey.Key);
-
-            SavePlayerPrefs(EncryptedKeystoreKey, encryptedKeystoreJson);
-            Mnemonic = mnem;
-            return Task.FromResult(account);
         }
 
         /// <summary>
