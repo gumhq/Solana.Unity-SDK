@@ -227,5 +227,26 @@ namespace Solana.Unity.SDK
             await SignAndSendTransaction(tx);
             DeleteSessionWallet();
         }
-    }
+
+        /// <summary>
+        /// Checks if the session wallet has enough SOL otherwise it will top up the session wallet with SOL.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+
+        public async Task CheckBalanceAndTopup(ulong topupAmount) {
+            var balance = (await GetBalance(Account.PublicKey));
+            var estimatedFees = await ActiveRpcClient.GetFeesAsync();
+            var minimumRequired = estimatedFees.Result.Value.FeeCalculator.LamportsPerSignature * 10;
+            if (balance < minimumRequired) {
+                var tx = new Transaction()
+                {
+                    FeePayer = Account,
+                    Instructions = new List<TransactionInstruction>(),
+                    RecentBlockHash = await Web3.BlockHash()
+                };
+                tx.Add(SystemProgram.Transfer(Account.PublicKey, Web3.Account.PublicKey, topupAmount));
+                await SignAndSendTransaction(tx);
+            }
+        }
+}
 }
